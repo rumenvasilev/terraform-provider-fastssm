@@ -1,4 +1,4 @@
-## 0.1.0 (Unreleased)
+## 0.1.1 (Unreleased)
 
 FEATURES:
 * provision SSM parameters (resource and data_source)
