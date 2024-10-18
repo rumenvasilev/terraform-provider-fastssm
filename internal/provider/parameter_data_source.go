@@ -86,6 +86,7 @@ func (d *ParameterDataSource) Schema(ctx context.Context, req datasource.SchemaR
 			},
 			names.AttrValue: schema.StringAttribute{
 				Sensitive: true,
+				Optional:  true,
 				// Computed:  true,
 				// https://pkg.go.dev/github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator#ExactlyOneOf
 				Validators: []validator.String{

@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/function"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
@@ -22,7 +21,8 @@ import (
 
 // Ensure FastSSMProvider satisfies various provider interfaces.
 var _ provider.Provider = &FastSSMProvider{}
-var _ provider.ProviderWithFunctions = &FastSSMProvider{}
+
+// var _ provider.ProviderWithFunctions = &FastSSMProvider{}
 
 // FastSSMProvider defines the provider implementation.
 type FastSSMProvider struct {
@@ -542,11 +542,11 @@ func (p *FastSSMProvider) DataSources(ctx context.Context) []func() datasource.D
 	}
 }
 
-func (p *FastSSMProvider) Functions(ctx context.Context) []func() function.Function {
-	return []func() function.Function{
-		NewExampleFunction,
-	}
-}
+// func (p *FastSSMProvider) Functions(ctx context.Context) []func() function.Function {
+// 	return []func() function.Function{
+// 		NewExampleFunction,
+// 	}
+// }
 
 func New(version string) func() provider.Provider {
 	return func() provider.Provider {
