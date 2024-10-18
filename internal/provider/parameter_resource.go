@@ -27,9 +27,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 )
 
-const (
-	errCodeValidationException = "ValidationException"
-)
+// const (
+// 	errCodeValidationException = "ValidationException"
+// )
 
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ resource.Resource = &ParameterResource{}

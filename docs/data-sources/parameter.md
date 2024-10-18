@@ -3,17 +3,16 @@
 page_title: "fastssm_parameter Data Source - fastssm"
 subcategory: ""
 description: |-
-  Example data source
+  SSM Parameter data source
 ---
 
 # fastssm_parameter (Data Source)
 
-Example data source
+SSM Parameter data source
 
 ## Example Usage
 
 ```terraform
-
 data "fastssm_parameter" "example" {
   name = "some-value"
 }
@@ -24,8 +23,13 @@ data "fastssm_parameter" "example" {
 
 ### Optional
 
-- `configurable_attribute` (String) Example configurable attribute
+- `insecure_value` (String)
+- `value` (String, Sensitive)
+- `with_decryption` (Boolean)
 
 ### Read-Only
 
-- `id` (String) Example identifier
+- `arn` (String)
+- `name` (String)
+- `type` (String)
+- `version` (Number)
