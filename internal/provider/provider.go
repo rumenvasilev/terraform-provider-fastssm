@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -506,6 +507,24 @@ func (p *FastSSMProvider) Configure(ctx context.Context, req provider.ConfigureR
 		resp.Diagnostics.AddError(
 			"provider configuration failed",
 			err.Error(),
+		)
+		return
+	}
+
+	stsclient := sts.NewFromConfig(cfg)
+	res, err := stsclient.GetCallerIdentity(context.TODO(), &sts.GetCallerIdentityInput{})
+	if err != nil || res == nil {
+		resp.Diagnostics.AddError(
+			"provider configuration failed at STS GetCallerIdentity phase",
+			err.Error(),
+		)
+		return
+	}
+
+	if res.UserId == nil {
+		resp.Diagnostics.AddError(
+			"couldn't get through STS authentication",
+			"Validation of credentials against STS failed. The response from AWS contained no userID.",
 		)
 	}
 
