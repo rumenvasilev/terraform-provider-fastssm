@@ -1,3 +1,11 @@
+## dev  (Unreleased)
+
+## 0.1.2
+
+FEATURES:
+* validate AWS credentials before sending any API calls
+* update documentation
+
 ## 0.1.1 (Unreleased)
 
 FEATURES:

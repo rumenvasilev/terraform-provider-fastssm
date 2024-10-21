@@ -3,21 +3,32 @@
 page_title: "fastssm_parameter Resource - fastssm"
 subcategory: ""
 description: |-
-  SSM Parameter resource
+  ~> Note: this is a slimmer and faster version, but doesn't include all the metadata you would normally enjoy with the official terraform-provider-aws. If performance is an issue, this should be a drop-in replacement for ssm_parameter resource from the official aws provider.
 ---
 
 # fastssm_parameter (Resource)
 
-SSM Parameter resource
+~> **Note:** this is a slimmer and faster version, but doesn't include all the metadata you would normally enjoy with the official terraform-provider-aws. If performance is an issue, this should be a drop-in replacement for ssm_parameter resource from the official aws provider.
 
 ## Example Usage
 
 ```terraform
+### Basic example
+
 resource "fastssm_parameter" "example" {
   name           = "some-ssm-parameter"
   type           = "String"
   insecure_value = "some-insecure-value"
   description    = "An example description"
+}
+
+### Encrypted string with default KMS key
+
+resource "fastssm_parameter" "secure" {
+  name        = "some-encrypted-ssm-parameter"
+  type        = "SecureString"
+  value       = "some-secure-value"
+  description = "An example description"
 }
 ```
 
@@ -26,20 +37,20 @@ resource "fastssm_parameter" "example" {
 
 ### Required
 
-- `name` (String)
-- `type` (String)
+- `name` (String) Name of the parameter. If the name contains a path (e.g., any forward slashes (`/`)), it must be fully qualified with a leading forward slash (`/`). For additional requirements and constraints, see the [AWS SSM User Guide](https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-parameter-name-constraints.html).
+- `type` (String) Type of the parameter. Valid types are `String`, `StringList` and `SecureString`.
 
 ### Optional
 
-- `allowed_pattern` (String)
-- `arn` (String)
-- `data_type` (String)
-- `description` (String)
-- `insecure_value` (String)
-- `overwrite` (Boolean, Deprecated)
+- `allowed_pattern` (String) Regular expression used to validate the parameter value.
+- `arn` (String) ARN of the parameter.
+- `data_type` (String) Data type of the parameter. Valid values: `text`, `aws:ssm:integration` and `aws:ec2:image` for AMI format, see the [Native parameter support for Amazon Machine Image IDs](https://docs.aws.amazon.com/systems-manager/latest/userguide/parameter-store-ec2-aliases.html)
+- `description` (String) Description of the parameter.
+- `insecure_value` (String) Value of the parameter. **Use caution:** This value is _never_ marked as sensitive in the Terraform plan output. This argument is not valid with a `type` of `SecureString`.
+- `overwrite` (Boolean, Deprecated) Overwrite an existing parameter. If not specified, defaults to `false` if the resource has not been created by Terraform to avoid overwrite of existing resource, and will default to `true` otherwise (Terraform lifecycle rules should then be used to manage the update behavior).
 - `tags` (Map of String, Deprecated) UNSUPPORTED. This feature is intentionally unavailable for performance reasons. You can still pass input data to it for backwards compatibility, but it will not be reflected in the ssm_parameter resource in AWS.
-- `value` (String, Sensitive)
+- `value` (String, Sensitive) Value of the parameter. This value is always marked as sensitive in the Terraform plan output, regardless of `type`. In Terraform CLI version 0.15 and later, this may require additional configuration handling for certain scenarios. For more information, see the [Terraform v0.15 Upgrade Guide](https://www.terraform.io/upgrade-guides/0-15.html#sensitive-output-values).
 
 ### Read-Only
 
-- `version` (Number)
+- `version` (Number) Version of the parameter.

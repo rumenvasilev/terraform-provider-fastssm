@@ -68,16 +68,19 @@ func (r *ParameterResource) Metadata(ctx context.Context, req resource.MetadataR
 
 func (r *ParameterResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "SSM Parameter resource",
+		Description:         "Provides an SSM Parameter resource.",
+		MarkdownDescription: "~> **Note:** this is a slimmer and faster version, but doesn't include all the metadata you would normally enjoy with the official terraform-provider-aws. If performance is an issue, this should be a drop-in replacement for ssm_parameter resource from the official aws provider.",
 
 		Attributes: map[string]schema.Attribute{
 			"allowed_pattern": schema.StringAttribute{
-				Optional:   true,
-				Validators: []validator.String{stringvalidator.LengthBetween(0, 1024)},
+				Optional:    true,
+				Validators:  []validator.String{stringvalidator.LengthBetween(0, 1024)},
+				Description: "Regular expression used to validate the parameter value.",
 			},
 			names.AttrARN: schema.StringAttribute{
-				Optional: true,
-				Computed: true,
+				Optional:    true,
+				Computed:    true,
+				Description: "ARN of the parameter.",
 			},
 			"data_type": schema.StringAttribute{
 				Optional: true,
@@ -92,10 +95,12 @@ func (r *ParameterResource) Schema(ctx context.Context, req resource.SchemaReque
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
+				Description: "Data type of the parameter. Valid values: `text`, `aws:ssm:integration` and `aws:ec2:image` for AMI format, see the [Native parameter support for Amazon Machine Image IDs](https://docs.aws.amazon.com/systems-manager/latest/userguide/parameter-store-ec2-aliases.html)",
 			},
 			names.AttrDescription: schema.StringAttribute{
-				Optional:   true,
-				Validators: []validator.String{stringvalidator.LengthBetween(0, 1024)},
+				Optional:    true,
+				Validators:  []validator.String{stringvalidator.LengthBetween(0, 1024)},
+				Description: "Description of the parameter.",
 			},
 			"insecure_value": schema.StringAttribute{
 				Optional: true,
@@ -111,6 +116,7 @@ func (r *ParameterResource) Schema(ctx context.Context, req resource.SchemaReque
 				// PlanModifiers: []planmodifier.String{
 				// 	SyncAttributePlanModifier("value"),
 				// },
+				Description: "Value of the parameter. **Use caution:** This value is _never_ marked as sensitive in the Terraform plan output. This argument is not valid with a `type` of `SecureString`.",
 			},
 			// KMS KeyID - we use the default.
 			// names.AttrKeyID: schema.StringAttribute{
@@ -122,11 +128,13 @@ func (r *ParameterResource) Schema(ctx context.Context, req resource.SchemaReque
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
-				Validators: []validator.String{stringvalidator.LengthBetween(1, 2048)},
+				Validators:  []validator.String{stringvalidator.LengthBetween(1, 2048)},
+				Description: "Name of the parameter. If the name contains a path (e.g., any forward slashes (`/`)), it must be fully qualified with a leading forward slash (`/`). For additional requirements and constraints, see the [AWS SSM User Guide](https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-parameter-name-constraints.html).",
 			},
 			"overwrite": schema.BoolAttribute{
 				Optional:           true,
 				DeprecationMessage: "this attribute has been deprecated",
+				Description:        "Overwrite an existing parameter. If not specified, defaults to `false` if the resource has not been created by Terraform to avoid overwrite of existing resource, and will default to `true` otherwise (Terraform lifecycle rules should then be used to manage the update behavior).",
 			},
 			names.AttrTags: schema.MapAttribute{
 				Optional:           true,
@@ -146,6 +154,7 @@ func (r *ParameterResource) Schema(ctx context.Context, req resource.SchemaReque
 				Validators: []validator.String{
 					stringvalidator.OneOf("String", "StringList", "SecureString"),
 				}, // awstypes.ParameterType.Values()
+				Description: "Type of the parameter. Valid types are `String`, `StringList` and `SecureString`.",
 			},
 			names.AttrValue: schema.StringAttribute{
 				Optional:  true,
@@ -159,9 +168,11 @@ func (r *ParameterResource) Schema(ctx context.Context, req resource.SchemaReque
 						}...),
 						// dependentParameterValidator{dependentParamName: "type", requiredValue: []string{"SecureString"}},
 					)},
+				Description: "Value of the parameter. This value is always marked as sensitive in the Terraform plan output, regardless of `type`. In Terraform CLI version 0.15 and later, this may require additional configuration handling for certain scenarios. For more information, see the [Terraform v0.15 Upgrade Guide](https://www.terraform.io/upgrade-guides/0-15.html#sensitive-output-values).",
 			},
 			names.AttrVersion: schema.Int64Attribute{
-				Computed: true,
+				Computed:    true,
+				Description: "Version of the parameter.",
 			},
 		},
 	}

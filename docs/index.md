@@ -3,12 +3,12 @@
 page_title: "fastssm Provider"
 subcategory: ""
 description: |-
-  
+  ~> Note: When you start having thousands of SSM parameters, you begin to notice quite some slowness of terraform. It's highly likely that you've exhausted the rate limit of AWS SSM API. Even if you upgrade the limit, that only applies for GetParameter calls. In the official AWS provider, for each GetParameter call, there's an additional DescribeParameters call made. That's where the bottleneck is. This provider eliminates >90% of these rate-limited calls, by not doing them in the first place. It's at the expense of not supporting all the metadata, but that should be a fair trade-off, considering you can still use SSM parameter store, fast.
 ---
 
 # fastssm Provider
 
-
+~> **Note:** When you start having thousands of SSM parameters, you begin to notice quite some slowness of terraform. It's highly likely that you've exhausted the rate limit of AWS SSM API. Even if you upgrade the limit, that only applies for GetParameter calls. In the official AWS provider, for each GetParameter call, there's an additional DescribeParameters call made. That's where the bottleneck is. This provider eliminates >90% of these rate-limited calls, by not doing them in the first place. It's at the expense of not supporting all the metadata, but that should be a fair trade-off, considering you can still use SSM parameter store, fast.
 
 ## Example Usage
 
