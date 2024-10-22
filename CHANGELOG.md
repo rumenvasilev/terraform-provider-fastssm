@@ -1,3 +1,7 @@
+## Unreleased
+
+* CI: remove build for terraform 1.7 - it's not supported by the provider
+
 ## 0.1.3
 
 FEATURES:
