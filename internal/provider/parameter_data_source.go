@@ -54,12 +54,11 @@ func (d *ParameterDataSource) Schema(ctx context.Context, req datasource.SchemaR
 		Attributes: map[string]schema.Attribute{
 			names.AttrARN: schema.StringAttribute{
 				// Optional: true,
-				Computed: true,
+				Computed:    true,
+				Description: "ARN of the parameter.",
 			},
 			"insecure_value": schema.StringAttribute{
-				Optional: true,
-				// Computed: true,
-				// Sensitive: true,
+				Computed: true,
 				Validators: []validator.String{
 					stringvalidator.All(
 						stringvalidator.ConflictsWith(path.Expressions{
@@ -70,12 +69,14 @@ func (d *ParameterDataSource) Schema(ctx context.Context, req datasource.SchemaR
 				// PlanModifiers: []planmodifier.String{
 				// 	SyncAttributePlanModifier("value"),
 				// },
+				Description: "Value of the parameter. **Use caution:** This value is never marked as sensitive.",
 			},
 			names.AttrName: schema.StringAttribute{
-				Computed: true,
+				Required: true,
 				// PlanModifiers: []planmodifier.String{
 				// 	stringplanmodifier.RequiresReplace(),
 				// },
+				Description: "Name of the parameter.",
 			},
 			names.AttrType: schema.StringAttribute{
 				// Required: true,
@@ -83,10 +84,11 @@ func (d *ParameterDataSource) Schema(ctx context.Context, req datasource.SchemaR
 				// Validators: []validator.String{
 				// 	stringvalidator.OneOf("String", "StringList", "SecureString"),
 				// }, // awstypes.ParameterType.Values()
+				Description: "Type of the parameter. Valid types are `String`, `StringList` and `SecureString`.",
 			},
 			names.AttrValue: schema.StringAttribute{
 				Sensitive: true,
-				Optional:  true,
+				Computed:  true,
 				// Computed:  true,
 				// https://pkg.go.dev/github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator#ExactlyOneOf
 				Validators: []validator.String{
@@ -96,14 +98,17 @@ func (d *ParameterDataSource) Schema(ctx context.Context, req datasource.SchemaR
 						}...),
 						// dependentParameterValidator{dependentParamName: "type", requiredValue: []string{"SecureString"}},
 					)},
+				Description: "Value of the parameter. This value is always marked as sensitive in the Terraform plan output, regardless of `type`. In Terraform CLI version 0.15 and later, this may require additional configuration handling for certain scenarios. For more information, see the [Terraform v0.15 Upgrade Guide](https://www.terraform.io/upgrade-guides/0-15.html#sensitive-output-values).",
 			},
 			names.AttrVersion: schema.Int64Attribute{
-				Computed: true,
+				Computed:    true,
+				Description: "Version of the parameter.",
 			},
 			"with_decryption": schema.BoolAttribute{
 				Optional: true,
 				// TODO need to set this to default = true
 				// Default:  true,
+				Description: "Whether to return decrypted `SecureString` value. Defaults to `true`.",
 			},
 		},
 	}
@@ -186,10 +191,9 @@ func (d *ParameterDataSource) Read(ctx context.Context, req datasource.ReadReque
 	data.Type = basetypes.NewStringValue(string(res.Type))
 	data.Version = basetypes.NewInt64Value(res.Version)
 
+	data.Value = basetypes.NewStringValue(*res.Value)
 	if !data.InsecureValue.IsNull() && res.Type != ssm_types.ParameterTypeSecureString {
 		data.InsecureValue = basetypes.NewStringValue(*res.Value)
-	} else {
-		data.Value = basetypes.NewStringValue(*res.Value)
 	}
 
 	// Save updated data into Terraform state
