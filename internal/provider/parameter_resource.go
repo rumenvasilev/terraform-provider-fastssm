@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"terraform-provider-fastssm/internal/names"
@@ -34,6 +35,7 @@ import (
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ resource.Resource = &ParameterResource{}
 var _ resource.ResourceWithImportState = &ParameterResource{}
+var _ resource.ResourceWithMoveState = &ParameterResource{}
 
 func NewParameterResource() resource.Resource {
 	return &ParameterResource{}
@@ -55,7 +57,7 @@ type ParameterResourceModel struct {
 	Name      types.String `tfsdk:"name"`
 	Overwrite types.Bool   `tfsdk:"overwrite"`
 	Tags      types.Map    `tfsdk:"tags"`
-	// TagsAll        types.Map    `tfsdk:"tags_all"`
+	// TagsAll   types.Map    `tfsdk:"tags_all"`
 	// Tier    types.String `tfsdk:"tier"`
 	Type    types.String `tfsdk:"type"`
 	Value   types.String `tfsdk:"value"`
@@ -104,8 +106,7 @@ func (r *ParameterResource) Schema(ctx context.Context, req resource.SchemaReque
 			},
 			"insecure_value": schema.StringAttribute{
 				Optional: true,
-				// Computed: true,
-				// Sensitive: true,
+				Computed: true,
 				Validators: []validator.String{
 					stringvalidator.All(
 						stringvalidator.ConflictsWith(path.Expressions{
@@ -166,6 +167,10 @@ func (r *ParameterResource) Schema(ctx context.Context, req resource.SchemaReque
 						stringvalidator.ConflictsWith(path.Expressions{
 							path.MatchRoot("insecure_value"),
 						}...),
+						stringvalidator.AtLeastOneOf(path.Expressions{
+							path.MatchRoot("insecure_value"),
+							path.MatchRoot("value"),
+						}...),
 						// dependentParameterValidator{dependentParamName: "type", requiredValue: []string{"SecureString"}},
 					)},
 				Description: "Value of the parameter. This value is always marked as sensitive in the Terraform plan output, regardless of `type`. In Terraform CLI version 0.15 and later, this may require additional configuration handling for certain scenarios. For more information, see the [Terraform v0.15 Upgrade Guide](https://www.terraform.io/upgrade-guides/0-15.html#sensitive-output-values).",
@@ -211,9 +216,6 @@ func (r *ParameterResource) Create(ctx context.Context, req resource.CreateReque
 	// Prepare PutParameter request
 	typ := ssm_types.ParameterType(data.Type.ValueString())
 	val := data.Value.ValueString()
-	if (!data.InsecureValue.IsUnknown() && !data.InsecureValue.IsNull()) && data.Type.ValueString() != string(ssm_types.ParameterTypeSecureString) {
-		val = data.InsecureValue.ValueString()
-	}
 
 	input := &ssm.PutParameterInput{
 		Name:           data.Name.ValueStringPointer(),
@@ -273,6 +275,12 @@ func (r *ParameterResource) Create(ctx context.Context, req resource.CreateReque
 	}
 	data.Arn = basetypes.NewStringValue(*get.Parameter.ARN)
 
+	data.InsecureValue = basetypes.NewStringNull()
+	// Populate insecure_value if it's not a secure string
+	if get.Parameter.Type != ssm_types.ParameterTypeSecureString {
+		data.InsecureValue = data.Value
+	}
+
 	// Write logs using the tflog package
 	// Documentation: https://terraform.io/plugin/log
 	tflog.Trace(ctx, "created a resource")
@@ -329,15 +337,14 @@ func (r *ParameterResource) Read(ctx context.Context, req resource.ReadRequest, 
 	}
 
 	// The following information is only available with DescribeParameter call, to get the additional metadata.
-	// Only call DescribeParameters if nothing but version has changed!
+	// Only call DescribeParameters if nothing but the version has changed!
 	if res.Version != data.Version.ValueInt64() {
-		// if data.Arn.ValueString() == *res.ARN &&
 		if data.Name.ValueString() == *res.Name &&
 			data.Type.ValueString() == string(res.Type) &&
 			data.DataType.ValueString() == *res.DataType &&
 			data.Value.ValueString() == *res.Value {
 
-			resp.Diagnostics.AddWarning("Running DescribeParameter call", "We will now do a describe call because we don't know what changed. This is an expensive operation!")
+			resp.Diagnostics.AddWarning("Running DescribeParameter call", "We will now do a describe call because we don't know what changed (most likely metadata). This is an expensive operation!")
 			name := "Name"
 			equals := "Equals"
 			oper := &ssm.DescribeParametersInput{ParameterFilters: []ssm_types.ParameterStringFilter{
@@ -348,18 +355,23 @@ func (r *ParameterResource) Read(ctx context.Context, req resource.ReadRequest, 
 				},
 			}}
 			// TODO NOT RETRIED!!!
-			descParams, err := r.client.DescribeParameters(ctx, oper)
+			md, err := r.client.DescribeParameters(ctx, oper)
 			if err != nil {
 				resp.Diagnostics.AddError("Something went wrong while getting parameter metadata", err.Error())
 				return
 			}
-			if len(descParams.Parameters) == 0 || len(descParams.Parameters) > 1 {
+			if len(md.Parameters) == 0 || len(md.Parameters) > 1 {
 				resp.Diagnostics.AddError("Incorrect response for parameter metadata", "None or too many results found.")
 				return
 			}
-			data.Description = basetypes.NewStringValue(*descParams.Parameters[0].Description)
 
-			// Metadata contains these extra fields, but we must only use Description:
+			data.Description = basetypes.NewStringValue("") // default to empty
+			// If description is empty we don't want to panic
+			if md.Parameters[0].Description != nil {
+				data.Description = basetypes.NewStringValue(*md.Parameters[0].Description)
+			}
+
+			// Metadata contains these extra fields, but we only use & need Description:
 			//
 			// AllowedPattern
 			// Description
@@ -376,10 +388,15 @@ func (r *ParameterResource) Read(ctx context.Context, req resource.ReadRequest, 
 	data.Version = basetypes.NewInt64Value(res.Version)
 	data.DataType = basetypes.NewStringValue(*res.DataType)
 
-	if !data.InsecureValue.IsNull() && res.Type != ssm_types.ParameterTypeSecureString {
+	data.Value = basetypes.NewStringValue(*res.Value)
+	// In case `value` is not provided, but `insecure_value`, copy it
+	if data.Value.IsNull() || data.Value.IsUnknown() {
+		data.Value = data.InsecureValue
+	}
+
+	// Populate insecure_value if it's not a secure string
+	if res.Type != ssm_types.ParameterTypeSecureString {
 		data.InsecureValue = basetypes.NewStringValue(*res.Value)
-	} else {
-		data.Value = basetypes.NewStringValue(*res.Value)
 	}
 
 	// Save updated data into Terraform state
@@ -392,13 +409,15 @@ func (r *ParameterResource) Update(ctx context.Context, req resource.UpdateReque
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 
+	// copy value to insecure_value if it's not a secure string
+	data.InsecureValue = basetypes.NewStringNull()
+	if data.Type.ValueString() != "SecureString" {
+		data.InsecureValue = data.Value
+	}
+
 	// Prepare PutParameter request
 	typ := ssm_types.ParameterType(data.Type.ValueString())
 	val := data.Value.ValueString()
-	if (!data.InsecureValue.IsUnknown() && !data.InsecureValue.IsNull()) && data.Type.ValueString() != string(ssm_types.ParameterTypeSecureString) {
-		val = data.InsecureValue.ValueString()
-	}
-
 	// Update should always overwrite
 	overwrite := true
 
@@ -522,6 +541,77 @@ func (r *ParameterResource) Delete(ctx context.Context, req resource.DeleteReque
 
 func (r *ParameterResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("name"), req, resp)
+}
+
+// This currently only supports migrating from aws_ssm_parameter to fastssm_parameter
+//
+//	moved {
+//	  from = aws_ssm_parameter.test
+//	  to   = fastssm_parameter.test
+//	}
+//
+// You cannot revert back, because that support needs to be present in aws_ssm_parameter
+func (r *ParameterResource) MoveState(ctx context.Context) []resource.StateMover {
+	sourceSchema := awsSSMParameterResourceSchema()
+	return []resource.StateMover{
+		{
+			SourceSchema: &sourceSchema,
+			StateMover: func(ctx context.Context, req resource.MoveStateRequest, resp *resource.MoveStateResponse) {
+				// Always verify the expected source before working with the data.
+				if req.SourceTypeName != "aws_ssm_parameter" {
+					resp.Diagnostics.AddError(
+						"Source schema name type mismatch",
+						fmt.Sprintf("Expected source schema to be aws_ssm_parameter, but was %q", req.SourceTypeName),
+					)
+					return
+				}
+
+				if req.SourceSchemaVersion != 0 {
+					resp.Diagnostics.AddError(
+						"Source schema version mismatch",
+						fmt.Sprintf("Expected source schema version to be 0, but was %d", req.SourceSchemaVersion),
+					)
+					return
+				}
+
+				// This only checks the provider address namespace and type
+				// since practitioners may use differing hostnames for the same
+				// provider, such as a network mirror. If necessary though, the
+				// hostname can be used for disambiguation.
+				if !strings.HasSuffix(req.SourceProviderAddress, "hashicorp/aws") {
+					resp.Diagnostics.AddError(
+						"Source provider unsupported",
+						fmt.Sprintf("Expected source provider was hashicorp/aws, but we got %q", req.SourceProviderAddress),
+					)
+					return
+				}
+
+				var sourceStateData awsSSMParameterResourceModel
+
+				resp.Diagnostics.Append(req.SourceState.Get(ctx, &sourceStateData)...)
+
+				if resp.Diagnostics.HasError() {
+					return
+				}
+
+				targetStateData := ParameterResourceModel{
+					AllowedPattern: sourceStateData.AllowedPattern,
+					Arn:            sourceStateData.Arn,
+					DataType:       sourceStateData.DataType,
+					Description:    sourceStateData.Description,
+					Value:          sourceStateData.Value,
+					// InsecureValue:  sourceStateData.InsecureValue,
+					Name:      sourceStateData.Name,
+					Overwrite: sourceStateData.Overwrite,
+					Tags:      sourceStateData.Tags,
+					Type:      sourceStateData.Type,
+					Version:   sourceStateData.Version,
+				}
+
+				resp.Diagnostics.Append(resp.TargetState.Set(ctx, targetStateData)...)
+			},
+		},
+	}
 }
 
 func isRetryableError(err error) bool {

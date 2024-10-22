@@ -191,10 +191,9 @@ func (d *ParameterDataSource) Read(ctx context.Context, req datasource.ReadReque
 	data.Type = basetypes.NewStringValue(string(res.Type))
 	data.Version = basetypes.NewInt64Value(res.Version)
 
+	data.Value = basetypes.NewStringValue(*res.Value)
 	if !data.InsecureValue.IsNull() && res.Type != ssm_types.ParameterTypeSecureString {
 		data.InsecureValue = basetypes.NewStringValue(*res.Value)
-	} else {
-		data.Value = basetypes.NewStringValue(*res.Value)
 	}
 
 	// Save updated data into Terraform state
