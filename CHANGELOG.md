@@ -1,6 +1,7 @@
 ## Unreleased
 
 * CI: remove build for terraform 1.7 - it's not supported by the provider
+* make testing working locally
 
 ## 0.1.3
 

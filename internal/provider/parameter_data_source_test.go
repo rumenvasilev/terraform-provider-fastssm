@@ -16,7 +16,7 @@ func TestAccParameterDataSource(t *testing.T) {
 			{
 				Config: testAccParameterDataSourceConfig,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("data.fastssm_parameter.test", names.AttrName, "not-a-random-name"),
+					resource.TestCheckResourceAttr("data.fastssm_parameter.test", names.AttrName, "test"),
 				),
 			},
 		},
@@ -25,6 +25,6 @@ func TestAccParameterDataSource(t *testing.T) {
 
 const testAccParameterDataSourceConfig = `
 data "fastssm_parameter" "test" {
-  name = "not-a-random-name"
+  name = "test"
 }
 `
