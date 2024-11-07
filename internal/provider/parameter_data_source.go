@@ -161,7 +161,7 @@ func (d *ParameterDataSource) Read(ctx context.Context, req datasource.ReadReque
 		res, erri = findParameterByName(ctx, d.client, data.Name.ValueString(), decryption)
 		if erri != nil {
 			// Check if the error is retryable (e.g., rate limiting, network issues)
-			if isRetryableError(erri) {
+			if isRetryableError(ctx, erri) {
 				// Return with retryable error, specifying how long to wait before the next retry
 				return retry.RetryableError(fmt.Errorf("temporary failure: %v, retrying...", erri))
 			}

@@ -246,7 +246,7 @@ func (r *ParameterResource) Create(ctx context.Context, req resource.CreateReque
 		result, erri = r.client.PutParameter(ctx, input)
 		if erri != nil {
 			// Check if the error is retryable (e.g., rate limiting, network issues)
-			if isRetryableError(erri) {
+			if isRetryableError(ctx, erri) {
 				// Return with retryable error, specifying how long to wait before the next retry
 				return retry.RetryableError(fmt.Errorf("temporary failure: %v, retrying...", erri))
 			}
@@ -311,7 +311,7 @@ func (r *ParameterResource) Read(ctx context.Context, req resource.ReadRequest, 
 		res, erri = findParameterByName(ctx, r.client, data.Name.ValueString(), true)
 		if erri != nil {
 			// Check if the error is retryable (e.g., rate limiting, network issues)
-			if isRetryableError(erri) {
+			if isRetryableError(ctx, erri) {
 				// Return with retryable error, specifying how long to wait before the next retry
 				return retry.RetryableError(fmt.Errorf("temporary failure: %v, retrying...", erri))
 			}
@@ -441,7 +441,7 @@ func (r *ParameterResource) Update(ctx context.Context, req resource.UpdateReque
 		result, erri = r.client.PutParameter(ctx, input)
 		if erri != nil {
 			// Check if the error is retryable (e.g., rate limiting, network issues)
-			if isRetryableError(erri) {
+			if isRetryableError(ctx, erri) {
 				// Return with retryable error, specifying how long to wait before the next retry
 				return retry.RetryableError(fmt.Errorf("temporary failure: %v, retrying...", erri))
 			}
@@ -471,7 +471,7 @@ func (r *ParameterResource) Update(ctx context.Context, req resource.UpdateReque
 		res, erri = findParameterByName(ctx, r.client, data.Name.ValueString(), withDecryption)
 		if erri != nil {
 			// Check if the error is retryable (e.g., rate limiting, network issues)
-			if isRetryableError(erri) {
+			if isRetryableError(ctx, erri) {
 				// Return with retryable error, specifying how long to wait before the next retry
 				return retry.RetryableError(fmt.Errorf("temporary failure: %v, retrying...", erri))
 			}
@@ -517,7 +517,7 @@ func (r *ParameterResource) Delete(ctx context.Context, req resource.DeleteReque
 		_, erri = r.client.DeleteParameter(ctx, input)
 		if erri != nil {
 			// Check if the error is retryable (e.g., rate limiting, network issues)
-			if isRetryableError(erri) {
+			if isRetryableError(ctx, erri) {
 				// Return with retryable error, specifying how long to wait before the next retry
 				return retry.RetryableError(fmt.Errorf("temporary failure: %v, retrying...", erri))
 			}
@@ -614,19 +614,19 @@ func (r *ParameterResource) MoveState(ctx context.Context) []resource.StateMover
 	}
 }
 
-func isRetryableError(err error) bool {
+func isRetryableError(ctx context.Context, err error) bool {
 	if err == nil {
 		return false // If err is nil, it's not a retryable error
 	}
 	// Type assertion for Smithy (used by AWS SDK v2)
 	var apiErr smithy.APIError
 	if ok := errors.As(err, &apiErr); ok {
-		tflog.Info(context.TODO(), apiErr.ErrorCode())
-		tflog.Info(context.TODO(), apiErr.ErrorMessage())
-		tflog.Info(context.TODO(), apiErr.ErrorFault().String())
+		tflog.Info(ctx, apiErr.ErrorCode())
+		tflog.Info(ctx, apiErr.ErrorMessage())
+		tflog.Info(ctx, apiErr.ErrorFault().String())
 
 		if apiErr.ErrorCode() == "ThrottlingException" {
-			tflog.Info(context.TODO(), "Rate limit exceeded, retrying...")
+			tflog.Info(ctx, "Rate limit exceeded, retrying...")
 			// Implement backoff before retrying
 			time.Sleep(time.Duration(5) * time.Second)
 			return true // Retry on throttling error
@@ -635,8 +635,8 @@ func isRetryableError(err error) bool {
 
 	var ratelimited ratelimit.QuotaExceededError
 	if ok := errors.As(err, &ratelimited); ok {
-		tflog.Error(context.TODO(), "we are being rate limited dude")
-		tflog.Info(context.TODO(), "Rate limit exceeded, retrying...")
+		tflog.Error(ctx, "we are being rate limited dude")
+		tflog.Info(ctx, "Rate limit exceeded, retrying...")
 		// Implement backoff before retrying
 		time.Sleep(time.Duration(5) * time.Second)
 		return true // Retry on throttling error
