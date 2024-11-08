@@ -354,8 +354,25 @@ func (r *ParameterResource) Read(ctx context.Context, req resource.ReadRequest, 
 					Values: []string{data.Name.ValueString()},
 				},
 			}}
-			// TODO NOT RETRIED!!!
-			md, err := r.client.DescribeParameters(ctx, oper)
+
+			var md = &ssm.DescribeParametersOutput{}
+			err := retry.RetryContext(ctx, 5*time.Minute, func() *retry.RetryError {
+				md, erri = r.client.DescribeParameters(ctx, oper)
+				if erri != nil {
+					// Check if the error is retryable (e.g., rate limiting, network issues)
+					if isRetryableError(ctx, erri) {
+						// Return with retryable error, specifying how long to wait before the next retry
+						return retry.RetryableError(fmt.Errorf("temporary failure: %v, retrying...", erri))
+					}
+
+					// If it's a permanent error, stop retrying
+					return retry.NonRetryableError(fmt.Errorf("permanent failure: %v", erri))
+				}
+
+				// If success, return nil (no retry)
+				return nil
+			})
+
 			if err != nil {
 				resp.Diagnostics.AddError("Something went wrong while getting parameter metadata", err.Error())
 				return
