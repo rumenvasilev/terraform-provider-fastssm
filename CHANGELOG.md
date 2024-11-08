@@ -1,7 +1,12 @@
 ## Unreleased
 
+## 0.1.4
+
+FIXES:
 * CI: remove build for terraform 1.7 - it's not supported by the provider
 * make testing working locally
+* fix logging of retries
+* add retries to describe call
 
 ## 0.1.3
 
