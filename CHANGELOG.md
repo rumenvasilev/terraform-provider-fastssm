@@ -1,5 +1,11 @@
 ## Unreleased
 
+## 0.1.6
+
+FIXES:
+* correctly wrap retry errors, so they are recognised as such, instead of generic client error
+* region override must use WithRegion() function call so it superseeds any others, including WithDefaultRegion()
+
 ## 0.1.5
 
 FIXES:
