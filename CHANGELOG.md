@@ -1,5 +1,10 @@
 ## Unreleased
 
+## 0.1.5
+
+FIXES:
+* region override in combination with profile works
+
 ## 0.1.4
 
 FIXES:

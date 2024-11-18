@@ -469,14 +469,14 @@ func (p *FastSSMProvider) Configure(ctx context.Context, req provider.ConfigureR
 		options = append(options, config.WithRetryMode(mode), config.WithRetryMaxAttempts(25))
 	}
 
-	// Region
-	if !data.Region.IsNull() {
-		options = append(options, config.WithDefaultRegion(data.Region.ValueString()))
-	}
-
 	// AWS Profile
 	if !data.Profile.IsNull() {
 		options = append(options, config.WithSharedConfigProfile(data.Profile.ValueString()))
+	}
+
+	// Region
+	if !data.Region.IsNull() {
+		options = append(options, config.WithDefaultRegion(data.Region.ValueString()))
 	}
 
 	// Static credentials
