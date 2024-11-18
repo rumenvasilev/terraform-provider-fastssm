@@ -476,7 +476,7 @@ func (p *FastSSMProvider) Configure(ctx context.Context, req provider.ConfigureR
 
 	// Region
 	if !data.Region.IsNull() {
-		options = append(options, config.WithDefaultRegion(data.Region.ValueString()))
+		options = append(options, config.WithRegion(data.Region.ValueString()))
 	}
 
 	// Static credentials

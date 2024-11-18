@@ -163,11 +163,11 @@ func (d *ParameterDataSource) Read(ctx context.Context, req datasource.ReadReque
 			// Check if the error is retryable (e.g., rate limiting, network issues)
 			if isRetryableError(ctx, erri) {
 				// Return with retryable error, specifying how long to wait before the next retry
-				return retry.RetryableError(fmt.Errorf("temporary failure: %v, retrying...", erri))
+				return retry.RetryableError(fmt.Errorf("temporary failure: %w, retrying...", erri))
 			}
 
 			// If it's a permanent error, stop retrying
-			return retry.NonRetryableError(fmt.Errorf("permanent failure: %v", erri))
+			return retry.NonRetryableError(fmt.Errorf("permanent failure: %w", erri))
 		}
 
 		// If success, return nil (no retry)
@@ -182,7 +182,7 @@ func (d *ParameterDataSource) Read(ctx context.Context, req datasource.ReadReque
 	}
 
 	if err != nil {
-		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read example, got error: %s", err))
+		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read parameter, got error: %v", err))
 		return
 	}
 
