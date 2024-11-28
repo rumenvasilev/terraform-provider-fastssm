@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
@@ -21,9 +22,7 @@ import (
 )
 
 // Ensure FastSSMProvider satisfies various provider interfaces.
-var _ provider.Provider = &FastSSMProvider{}
-
-// var _ provider.ProviderWithFunctions = &FastSSMProvider{}
+var _ provider.ProviderWithEphemeralResources = &FastSSMProvider{}
 
 // FastSSMProvider defines the provider implementation.
 type FastSSMProvider struct {
@@ -535,6 +534,7 @@ func (p *FastSSMProvider) Configure(ctx context.Context, req provider.ConfigureR
 	client := ssm.NewFromConfig(cfg)
 	resp.DataSourceData = client
 	resp.ResourceData = client
+	resp.EphemeralResourceData = client
 }
 
 type staticCredentials struct {
@@ -560,6 +560,12 @@ func (p *FastSSMProvider) Resources(ctx context.Context) []func() resource.Resou
 func (p *FastSSMProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewParameterDataSource,
+	}
+}
+
+func (p *FastSSMProvider) EphemeralResources(ctx context.Context) []func() ephemeral.EphemeralResource {
+	return []func() ephemeral.EphemeralResource{
+		NewParameterEphemeral,
 	}
 }
 

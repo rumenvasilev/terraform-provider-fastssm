@@ -1,4 +1,7 @@
-## Unreleased
+## 0.2.0 (unreleased)
+FEATURES:
+* implement ephemeral resource (terraform 1.10+)
+* upgraded framework libs
 
 ## 0.1.6
 

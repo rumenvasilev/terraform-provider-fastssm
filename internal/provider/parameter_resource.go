@@ -33,7 +33,7 @@ import (
 // )
 
 // Ensure provider defined types fully satisfy framework interfaces.
-var _ resource.Resource = &ParameterResource{}
+var _ resource.ResourceWithConfigure = &ParameterResource{}
 var _ resource.ResourceWithImportState = &ParameterResource{}
 var _ resource.ResourceWithMoveState = &ParameterResource{}
 
