@@ -20,7 +20,7 @@ import (
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
-var _ datasource.DataSource = &ParameterDataSource{}
+var _ datasource.DataSourceWithConfigure = &ParameterDataSource{}
 
 func NewParameterDataSource() datasource.DataSource {
 	return &ParameterDataSource{}
