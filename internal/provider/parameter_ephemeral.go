@@ -10,8 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	ssm_types "github.com/aws/aws-sdk-go-v2/service/ssm/types"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
+	"github.com/hashicorp/terraform-plugin-framework/ephemeral/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -20,19 +20,19 @@ import (
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
-var _ datasource.DataSourceWithConfigure = &ParameterDataSource{}
+var _ ephemeral.EphemeralResourceWithConfigure = &ParameterEphemeral{}
 
-func NewParameterDataSource() datasource.DataSource {
-	return &ParameterDataSource{}
+func NewParameterEphemeral() ephemeral.EphemeralResource {
+	return &ParameterEphemeral{}
 }
 
-// ParameterDataSource defines the data source implementation.
-type ParameterDataSource struct {
+// ParameterEphemeral defines the ephemeral implementation.
+type ParameterEphemeral struct {
 	client *ssm.Client
 }
 
-// ParameterDataSourceModel describes the data source data model.
-type ParameterDataSourceModel struct {
+// ParameterEphemeralModel describes the ephemeral data model.
+type ParameterEphemeralModel struct {
 	Arn            types.String `tfsdk:"arn"`
 	InsecureValue  types.String `tfsdk:"insecure_value"`
 	Name           types.String `tfsdk:"name"`
@@ -42,14 +42,14 @@ type ParameterDataSourceModel struct {
 	WithDecryption types.Bool   `tfsdk:"with_decryption"`
 }
 
-func (d *ParameterDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+func (d *ParameterEphemeral) Metadata(ctx context.Context, req ephemeral.MetadataRequest, resp *ephemeral.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_parameter"
 }
 
-func (d *ParameterDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *ParameterEphemeral) Schema(ctx context.Context, req ephemeral.SchemaRequest, resp *ephemeral.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		// This description is used by the documentation generator and the language server.
-		MarkdownDescription: "SSM Parameter data source",
+		MarkdownDescription: "SSM Parameter ephemeral (minimum required terraform version is 1.10)",
 
 		Attributes: map[string]schema.Attribute{
 			names.AttrARN: schema.StringAttribute{
@@ -66,37 +66,24 @@ func (d *ParameterDataSource) Schema(ctx context.Context, req datasource.SchemaR
 						}...),
 						dependentParameterValidator{dependentParamName: "type", requiredValue: []string{"String", "StringList"}},
 					)},
-				// PlanModifiers: []planmodifier.String{
-				// 	SyncAttributePlanModifier("value"),
-				// },
 				Description: "Value of the parameter. **Use caution:** This value is never marked as sensitive.",
 			},
 			names.AttrName: schema.StringAttribute{
-				Required: true,
-				// PlanModifiers: []planmodifier.String{
-				// 	stringplanmodifier.RequiresReplace(),
-				// },
+				Required:    true,
 				Description: "Name of the parameter.",
 			},
 			names.AttrType: schema.StringAttribute{
-				// Required: true,
-				Computed: true,
-				// Validators: []validator.String{
-				// 	stringvalidator.OneOf("String", "StringList", "SecureString"),
-				// }, // awstypes.ParameterType.Values()
+				Computed:    true,
 				Description: "Type of the parameter. Valid types are `String`, `StringList` and `SecureString`.",
 			},
 			names.AttrValue: schema.StringAttribute{
 				Sensitive: true,
 				Computed:  true,
-				// Computed:  true,
-				// https://pkg.go.dev/github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator#ExactlyOneOf
 				Validators: []validator.String{
 					stringvalidator.All(
 						stringvalidator.ConflictsWith(path.Expressions{
 							path.MatchRoot("insecure_value"),
 						}...),
-						// dependentParameterValidator{dependentParamName: "type", requiredValue: []string{"SecureString"}},
 					)},
 				Description: "Value of the parameter. This value is always marked as sensitive in the Terraform plan output, regardless of `type`. In Terraform CLI version 0.15 and later, this may require additional configuration handling for certain scenarios. For more information, see the [Terraform v0.15 Upgrade Guide](https://www.terraform.io/upgrade-guides/0-15.html#sensitive-output-values).",
 			},
@@ -114,7 +101,7 @@ func (d *ParameterDataSource) Schema(ctx context.Context, req datasource.SchemaR
 	}
 }
 
-func (d *ParameterDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (e *ParameterEphemeral) Configure(ctx context.Context, req ephemeral.ConfigureRequest, resp *ephemeral.ConfigureResponse) {
 	// Prevent panic if the provider has not been configured.
 	if req.ProviderData == nil {
 		return
@@ -124,18 +111,18 @@ func (d *ParameterDataSource) Configure(ctx context.Context, req datasource.Conf
 
 	if !ok {
 		resp.Diagnostics.AddError(
-			"Unexpected Data Source Configure Type",
+			"Unexpected Ephemeral Configure Type",
 			fmt.Sprintf("Expected *ssm.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 
 		return
 	}
 
-	d.client = client
+	e.client = client
 }
 
-func (d *ParameterDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var data ParameterDataSourceModel
+func (d *ParameterEphemeral) Open(ctx context.Context, req ephemeral.OpenRequest, resp *ephemeral.OpenResponse) {
+	var data ParameterEphemeralModel
 
 	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
@@ -177,7 +164,7 @@ func (d *ParameterDataSource) Read(ctx context.Context, req datasource.ReadReque
 	if tfresource.NotFound(err) {
 		resp.Diagnostics.AddError("parameter not found", fmt.Sprintf("SSM Parameter %s not found, removing from state", data.Name.String()))
 		data.Name = basetypes.NewStringNull()
-		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+		resp.Diagnostics.Append(resp.Result.Set(ctx, &data)...)
 		return
 	}
 
@@ -197,5 +184,5 @@ func (d *ParameterDataSource) Read(ctx context.Context, req datasource.ReadReque
 	}
 
 	// Save updated data into Terraform state
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(resp.Result.Set(ctx, &data)...)
 }
