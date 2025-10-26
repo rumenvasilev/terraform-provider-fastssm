@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
 
 // Ensure FastSSMProvider satisfies various provider interfaces.
@@ -41,7 +42,7 @@ type FastSSMProviderModel struct {
 	AssumeRoleWithWebIdentity types.List   `tfsdk:"assume_role_with_web_identity"` // nested
 	CustomCABundle            types.String `tfsdk:"custom_ca_bundle"`
 	DefaultTags               types.Map    `tfsdk:"default_tags"`
-	Endpoints                 types.Set    `tfsdk:"endpoints"` // nested
+	Endpoints                 types.Object `tfsdk:"endpoints"` // nested block
 	ForbiddenAccountsIds      types.Set    `tfsdk:"forbidden_account_ids"`
 	HTTPProxy                 types.String `tfsdk:"http_proxy"`
 	HTTPSProxy                types.String `tfsdk:"https_proxy"`
@@ -118,7 +119,6 @@ func (p *FastSSMProvider) Schema(ctx context.Context, req provider.SchemaRequest
 				// 	},
 				// },
 			},
-			"endpoints": endpointsSchema(),
 			"forbidden_account_ids": schema.SetAttribute{
 				ElementType: types.StringType,
 				Optional:    true,
@@ -277,18 +277,23 @@ func (p *FastSSMProvider) Schema(ctx context.Context, req provider.SchemaRequest
 				DeprecationMessage: "This is not supported in this provider intentionally.",
 			},
 		},
+		Blocks: map[string]schema.Block{
+			"endpoints": endpointsSchema(),
+		},
 	}
 }
 
-func endpointsSchema() *schema.SetNestedAttribute {
-	return &schema.SetNestedAttribute{
-		Optional: true,
-		NestedObject: schema.NestedAttributeObject{
-			Attributes: map[string]schema.Attribute{
-				"ssm": schema.StringAttribute{
-					Optional:    true,
-					Description: "Use this to override the default service endpoint URL",
-				},
+func endpointsSchema() *schema.SingleNestedBlock {
+	return &schema.SingleNestedBlock{
+		Description: "Configuration block for customizing service endpoints.",
+		Attributes: map[string]schema.Attribute{
+			"ssm": schema.StringAttribute{
+				Optional:    true,
+				Description: "Use this to override the default SSM service endpoint URL",
+			},
+			"sts": schema.StringAttribute{
+				Optional:    true,
+				Description: "Use this to override the default STS service endpoint URL",
 			},
 		},
 	}
@@ -510,28 +515,71 @@ func (p *FastSSMProvider) Configure(ctx context.Context, req provider.ConfigureR
 		return
 	}
 
-	stsclient := sts.NewFromConfig(cfg)
-	res, err := stsclient.GetCallerIdentity(context.TODO(), &sts.GetCallerIdentityInput{})
-	if err != nil || res == nil {
-		resp.Diagnostics.AddError(
-			"provider configuration failed at STS GetCallerIdentity phase",
-			err.Error(),
-		)
-		return
+	// Check for custom endpoints
+	var stsEndpoint, ssmEndpoint string
+	if !data.Endpoints.IsNull() && !data.Endpoints.IsUnknown() {
+		var endpoints struct {
+			STS types.String `tfsdk:"sts"`
+			SSM types.String `tfsdk:"ssm"`
+		}
+		diags := data.Endpoints.As(ctx, &endpoints, basetypes.ObjectAsOptions{})
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		if !endpoints.STS.IsNull() {
+			stsEndpoint = endpoints.STS.ValueString()
+		}
+		if !endpoints.SSM.IsNull() {
+			ssmEndpoint = endpoints.SSM.ValueString()
+		}
 	}
 
-	if res.UserId == nil {
-		resp.Diagnostics.AddError(
-			"couldn't get through STS authentication",
-			"Validation of credentials against STS failed. The response from AWS contained no userID.",
-		)
+	// Validate credentials via STS unless explicitly skipped
+	if data.SkipCredentialsValidation.IsNull() || !data.SkipCredentialsValidation.ValueBool() {
+		// Create STS client with optional custom endpoint
+		var stsclient *sts.Client
+		if stsEndpoint != "" {
+			stsclient = sts.NewFromConfig(cfg, func(o *sts.Options) {
+				o.BaseEndpoint = &stsEndpoint
+			})
+		} else {
+			stsclient = sts.NewFromConfig(cfg)
+		}
+
+		res, err := stsclient.GetCallerIdentity(context.TODO(), &sts.GetCallerIdentityInput{})
+		if err != nil || res == nil {
+			resp.Diagnostics.AddError(
+				"provider configuration failed at STS GetCallerIdentity phase",
+				err.Error(),
+			)
+			return
+		}
+
+		if res.UserId == nil {
+			resp.Diagnostics.AddError(
+				"couldn't get through STS authentication",
+				"Validation of credentials against STS failed. The response from AWS contained no userID.",
+			)
+		}
+
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 
-	if resp.Diagnostics.HasError() {
-		return
+	// Create SSM client with optional custom endpoint
+	// Use service-specific endpoint resolver (not the deprecated global one)
+	var client *ssm.Client
+	if ssmEndpoint != "" {
+		client = ssm.NewFromConfig(cfg, func(o *ssm.Options) {
+			o.BaseEndpoint = &ssmEndpoint
+		})
+	} else {
+		client = ssm.NewFromConfig(cfg)
 	}
 
-	client := ssm.NewFromConfig(cfg)
 	resp.DataSourceData = client
 	resp.ResourceData = client
 	resp.EphemeralResourceData = client

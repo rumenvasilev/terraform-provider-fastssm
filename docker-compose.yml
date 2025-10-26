@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  localstack:
+    container_name: fastssm-localstack
+    image: localstack/localstack:latest
+    ports:
+      - "4566:4566"            # LocalStack Gateway
+      - "4510-4559:4510-4559"  # External services port range
+    environment:
+      # Debug mode (same as CI)
+      - DEBUG=1
+      # AWS credentials (same as CI)
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      # Disable persistence for test environment
+      - PERSISTENCE=0
+      # Disable usage telemetry
+      - DISABLE_EVENTS=1
+      # Note: In LocalStack v3+, services load on-demand (lazy loading)
+      # Services like SSM, STS will be available along with their dependencies (IAM, KMS, etc.)
+      # This is normal behavior and doesn't significantly impact resource usage
+    volumes:
+      # # Mount LocalStack temp directory for persistence if needed
+      # - ./tmp/localstack:/var/lib/localstack
+      # Mount docker socket for Lambda support (optional)
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - localstack-network
+    healthcheck:
+      # Two-stage healthcheck:
+      # 1. Verify SSM service is marked as "running" in LocalStack health
+      # 2. Actually call SSM API to ensure it's functional and activate lazy-loaded service
+      test: >
+        aws --endpoint-url=http://localhost:4566 --region=us-east-1 ssm describe-parameters --max-results 1 >/dev/null 2>&1"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+networks:
+  localstack-network:
+    driver: bridge
+

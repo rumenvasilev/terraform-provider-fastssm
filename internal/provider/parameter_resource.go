@@ -248,7 +248,7 @@ func (r *ParameterResource) Create(ctx context.Context, req resource.CreateReque
 			// Check if the error is retryable (e.g., rate limiting, network issues)
 			if isRetryableError(ctx, erri) {
 				// Return with retryable error, specifying how long to wait before the next retry
-				return retry.RetryableError(fmt.Errorf("temporary failure: %w, retrying...", erri))
+				return retry.RetryableError(fmt.Errorf("temporary failure: %w, retrying", erri))
 			}
 
 			// If it's a permanent error, stop retrying
@@ -313,7 +313,7 @@ func (r *ParameterResource) Read(ctx context.Context, req resource.ReadRequest, 
 			// Check if the error is retryable (e.g., rate limiting, network issues)
 			if isRetryableError(ctx, erri) {
 				// Return with retryable error, specifying how long to wait before the next retry
-				return retry.RetryableError(fmt.Errorf("temporary failure: %w, retrying...", erri))
+				return retry.RetryableError(fmt.Errorf("temporary failure: %w, retrying", erri))
 			}
 
 			// If it's a permanent error, stop retrying
@@ -362,7 +362,7 @@ func (r *ParameterResource) Read(ctx context.Context, req resource.ReadRequest, 
 					// Check if the error is retryable (e.g., rate limiting, network issues)
 					if isRetryableError(ctx, erri) {
 						// Return with retryable error, specifying how long to wait before the next retry
-						return retry.RetryableError(fmt.Errorf("temporary failure: %w, retrying...", erri))
+						return retry.RetryableError(fmt.Errorf("temporary failure: %w, retrying", erri))
 					}
 
 					// If it's a permanent error, stop retrying
@@ -460,7 +460,7 @@ func (r *ParameterResource) Update(ctx context.Context, req resource.UpdateReque
 			// Check if the error is retryable (e.g., rate limiting, network issues)
 			if isRetryableError(ctx, erri) {
 				// Return with retryable error, specifying how long to wait before the next retry
-				return retry.RetryableError(fmt.Errorf("temporary failure: %w, retrying...", erri))
+				return retry.RetryableError(fmt.Errorf("temporary failure: %w, retrying", erri))
 			}
 
 			// If it's a permanent error, stop retrying
@@ -490,7 +490,7 @@ func (r *ParameterResource) Update(ctx context.Context, req resource.UpdateReque
 			// Check if the error is retryable (e.g., rate limiting, network issues)
 			if isRetryableError(ctx, erri) {
 				// Return with retryable error, specifying how long to wait before the next retry
-				return retry.RetryableError(fmt.Errorf("temporary failure: %w, retrying...", erri))
+				return retry.RetryableError(fmt.Errorf("temporary failure: %w, retrying", erri))
 			}
 
 			// If it's a permanent error, stop retrying
@@ -536,7 +536,7 @@ func (r *ParameterResource) Delete(ctx context.Context, req resource.DeleteReque
 			// Check if the error is retryable (e.g., rate limiting, network issues)
 			if isRetryableError(ctx, erri) {
 				// Return with retryable error, specifying how long to wait before the next retry
-				return retry.RetryableError(fmt.Errorf("temporary failure: %w, retrying...", erri))
+				return retry.RetryableError(fmt.Errorf("temporary failure: %w, retrying", erri))
 			}
 
 			// If it's a permanent error, stop retrying

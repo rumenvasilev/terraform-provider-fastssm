@@ -14,15 +14,12 @@ func TestAccParameterResource(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Create and Read testing
 			{
-				Config: testAccParameterResourceConfig("one"),
+				Config: testAccParameterResourceConfig("one", "fake value"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("fastssm_parameter.test", "name", "one"),
-					resource.TestCheckResourceAttr("fastssm_parameter.test", "value", "one"),
-					// resource.TestCheckResourceAttr("fastssm_parameter.test", "type", "String"),
-					// resource.TestCheckResourceAttr("fastssm_parameter.test", "insecure_value", "one"),
-					// resource.TestCheckResourceAttr("fastssm_parameter.test", "overwrite", "false"),
-					// resource.TestCheckResourceAttr("fastssm_parameter.test", "defaulted", "Parameter value when not configured"),
-					// resource.TestCheckResourceAttr("fastssm_parameter.test", "id", "Parameter-id"),
+					resource.TestCheckResourceAttr("fastssm_parameter.test", "value", "fake value"),
+					resource.TestCheckResourceAttr("fastssm_parameter.test", "type", "String"),
+					resource.TestCheckResourceAttr("fastssm_parameter.test", "insecure_value", "fake value"),
 				),
 			},
 			// ImportState testing
@@ -39,9 +36,10 @@ func TestAccParameterResource(t *testing.T) {
 			// },
 			// Update and Read testing
 			{
-				Config: testAccParameterResourceConfig("two"),
+				Config: testAccParameterResourceConfig("two", "fake value bom bom"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("fastssm_parameter.test", "name", "two"),
+					resource.TestCheckResourceAttr("fastssm_parameter.test", "value", "fake value bom bom"),
 				),
 			},
 			// Delete testing automatically occurs in TestCase
@@ -49,12 +47,12 @@ func TestAccParameterResource(t *testing.T) {
 	})
 }
 
-func testAccParameterResourceConfig(configurableAttribute string) string {
-	return fmt.Sprintf(`
+func testAccParameterResourceConfig(name, value string) string {
+	return testAccProviderConfig() + fmt.Sprintf(`
 resource "fastssm_parameter" "test" {
   name = %[1]q
-  value = %[1]q
+  value = %[2]q
   type = "String"
 }
-`, configurableAttribute)
+`, name, value)
 }

@@ -1,0 +1,25 @@
+# Test configuration for import functionality
+# This file is used to test importing existing SSM parameters
+# Note: Uses terraform and provider blocks from main.tf
+
+# Import target - will be populated via terraform import
+resource "fastssm_parameter" "imported" {
+  name  = "/e2e/test/import"
+  type  = "String"
+  value = "placeholder"
+}
+
+output "imported_parameter_name" {
+  value = fastssm_parameter.imported.name
+}
+
+output "imported_parameter_value" {
+  value     = fastssm_parameter.imported.value
+  sensitive = true
+}
+
+output "imported_parameter_version" {
+  value     = fastssm_parameter.imported.version
+  sensitive = true
+}
+

@@ -37,7 +37,12 @@ website/vendor
 terraform-provider-*
 .terraform.lock.hcl
 
-tests
+# Ignore tests directory contents but keep e2e subdirectory
+tests/*
+!tests/e2e/
 tests-aws
 
 vendor/
+
+# LocalStack temporary data
+tmp/
