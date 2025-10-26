@@ -1,6 +1,6 @@
 module terraform-provider-fastssm
 
-go 1.23.2
+go 1.25.3
 
 require (
 	github.com/YakDriver/regexache v0.24.0

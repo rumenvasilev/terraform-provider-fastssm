@@ -1,0 +1,30 @@
+# Test configuration for update functionality
+# Note: Uses terraform and provider blocks from main.tf
+
+# Parameter that will be updated
+resource "fastssm_parameter" "updatable" {
+  name        = "/e2e/test/updatable"
+  type        = "String"
+  value       = var.parameter_value
+  description = var.parameter_description
+}
+
+variable "parameter_value" {
+  type    = string
+  default = "initial-value"
+}
+
+variable "parameter_description" {
+  type    = string
+  default = "Initial description"
+}
+
+output "updatable_version" {
+  value = fastssm_parameter.updatable.version
+}
+
+output "updatable_value" {
+  value     = fastssm_parameter.updatable.value
+  sensitive = true
+}
+

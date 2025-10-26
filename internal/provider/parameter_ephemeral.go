@@ -150,7 +150,7 @@ func (d *ParameterEphemeral) Open(ctx context.Context, req ephemeral.OpenRequest
 			// Check if the error is retryable (e.g., rate limiting, network issues)
 			if isRetryableError(ctx, erri) {
 				// Return with retryable error, specifying how long to wait before the next retry
-				return retry.RetryableError(fmt.Errorf("temporary failure: %w, retrying...", erri))
+				return retry.RetryableError(fmt.Errorf("temporary failure: %w, retrying", erri))
 			}
 
 			// If it's a permanent error, stop retrying

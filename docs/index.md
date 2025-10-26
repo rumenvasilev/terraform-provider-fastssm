@@ -14,7 +14,11 @@ description: |-
 
 ```terraform
 provider "fastssm" {
-
+  region = "eu-west-1"
+  # Optional
+  endpoints {
+    ssm = "https://ssm.eu-west-1.amazonaws.com"
+  }
 }
 ```
 
@@ -30,7 +34,7 @@ from the 'Security & Credentials' section of the AWS console.
 - `assume_role_with_web_identity` (Attributes List) (see [below for nested schema](#nestedatt--assume_role_with_web_identity))
 - `custom_ca_bundle` (String) File containing custom root and intermediate certificates. Can also be configured using the `AWS_CA_BUNDLE` environment variable. (Setting `ca_bundle` in the shared config file is not supported.)
 - `default_tags` (Map of String, Deprecated) Configuration block with settings to default resource tags across all resources.
-- `endpoints` (Attributes Set) (see [below for nested schema](#nestedatt--endpoints))
+- `endpoints` (Block, Optional) Configuration block for customizing service endpoints. (see [below for nested schema](#nestedblock--endpoints))
 - `forbidden_account_ids` (Set of String) Unsupported.
 - `http_proxy` (String, Deprecated) URL of a proxy to use for HTTP requests when accessing the AWS API. Can also be set using the `HTTP_PROXY` or `http_proxy` environment variables.
 - `https_proxy` (String, Deprecated) URL of a proxy to use for HTTPS requests when accessing the AWS API. Can also be set using the `HTTPS_PROXY` or `https_proxy` environment variables.
@@ -95,9 +99,10 @@ Optional:
 - `web_identity_token_file` (String)
 
 
-<a id="nestedatt--endpoints"></a>
+<a id="nestedblock--endpoints"></a>
 ### Nested Schema for `endpoints`
 
 Optional:
 
-- `ssm` (String) Use this to override the default service endpoint URL
+- `ssm` (String) Use this to override the default SSM service endpoint URL
+- `sts` (String) Use this to override the default STS service endpoint URL

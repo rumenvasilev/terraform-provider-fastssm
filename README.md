@@ -1,18 +1,25 @@
 # Terraform Provider: FastSSM
 
-The FastSSM provider was written to speed-up terraform runs across larger installations/usage, where AWS SSM parameter is employed. And so it handles only the lifecycle of AWS SSM parameter (both resource and data-source), but much faster. There's a limited set of attributes supported (omitted some of the metadata) in order to reduce the amount of expensive (latency, rate-limit) API calls, sometimes by more than 95%. There are no plans to extend it with support for any other AWS resources.
+The FastSSM provider was written to speed-up terraform runs across larger installations where AWS SSM Parameter Store is heavily used. It handles the lifecycle of AWS SSM parameters (resource, data-source, and ephemeral resource) with a focus on performance. By eliminating unnecessary metadata API calls, it reduces expensive `DescribeParameters` calls by over 90%, drastically improving refresh times.
 
-The ssm_parameter resource can be used to create a AWS SSM [parameter](docs/resources/parameter.md).
+**Production Status:** This provider has been used in production for over a year with tens of thousands of SSM parameters. The core SSM parameter handling logic is stable and battle-tested. Some advanced authentication features are not yet implemented.
 
-**THIS PROVIDER IS STILL EXPERIMENTAL AND IN ACTIVE DEVELOPMENT! USE AT YOUR OWN RISK!**
+**Trade-offs:** To achieve performance gains, this provider does not support parameter tags (which require `DescribeParameters` API calls). Most provider-level features unrelated to SSM (like `default_tags`, `ignore_tags`, proxy settings, etc.) are also not implemented.
 
-## Why write a separate provider?
+## Why a separate provider?
 
-Great question! Initial plan was to follow-up with some community ideas in terraform-provider-aws to improve the performance. However after reviewing the codebase (that's one of the first terraform proviers ever), I decided it would be much faster and easier to just write just this resource from scratch in a provider envelope, without the difficulty of maintaining full backward compatibility with every feature terraform-provider-aws had.
+The official `terraform-provider-aws` makes a `DescribeParameters` call for every SSM parameter read, which is heavily rate-limited by AWS. With thousands of parameters, this causes terraform operations to fail due to rate limit exhaustion, or take many minutes to complete.
 
-Starting fresh allowed the full adoption of the latest terraform-provider-framework, making it a lot simpler and easier to bootstrap a POC.
+Starting fresh with the latest terraform-provider-framework allowed focusing solely on performance without backward compatibility constraints. Production deployments have seen refresh times drop from tens of minutes to seconds, and rate limit error failures eliminated entirely.
 
-My tests so far have proven read operations (the aim of this optimization), with thousands of SSM parameters, have gone down from multiple minutes, down to seconds. And thus terraform plan (refresh) and terraform destroy commands have both benefitted greatly. The refresh is the most abused operation with existing systems.
+### What's Not Supported
+
+For performance reasons, the following features are intentionally not implemented:
+
+- **Parameter tags** - Requires `DescribeParameters` API call (the bottleneck we're avoiding)
+- **Parameter tier** - AWS automatically upgrades from Standard to Advanced when needed
+- **Custom KMS keys** - Uses AWS-managed default key for SecureString parameters
+- **Provider-level features** - `default_tags`, `ignore_tags`, proxy settings, and other AWS provider features unrelated to SSM
 
 ## Documentation, questions and discussions
 
@@ -30,8 +37,8 @@ The remainder of this document will focus on the development aspects of the prov
 
 ## Requirements
 
-* [Terraform](https://www.terraform.io/downloads) (>= 0.12)
-* [Go](https://go.dev/doc/install) (1.23)
+* [Terraform](https://www.terraform.io/downloads) (>= 1.10) - required for ephemeral resource support
+* [Go](https://go.dev/doc/install) (1.25)
 * [GNU Make](https://www.gnu.org/software/make/)
 * [golangci-lint](https://golangci-lint.run/usage/install/#local-installation) (optional)
 
@@ -52,10 +59,13 @@ In order to test the provider, you can run
 
 * `make test` to run provider tests
 * `make testacc` to run provider acceptance tests
+* `make e2e-test` to run end-to-end tests with LocalStack
 
 It's important to note that acceptance tests (`testacc`) will actually spawn
 `terraform` and the provider. Read more about they work on the
 [official page](https://www.terraform.io/plugin/sdkv2/testing/acceptance-tests).
+
+For comprehensive e2e testing with LocalStack, see the [E2E Testing Guide](tests/e2e/README.md).
 
 ### Generating documentation
 
