@@ -164,8 +164,11 @@ print_header "Test 0: Missing Provider Configuration (expect failure)"
 setup_test_env "Test 0" "no-provider-config.tf"
 
 echo "Running terraform plan with empty provider block (should fail)..."
-if terraform plan 2>&1 | tee /tmp/plan-output.txt; then
+terraform plan > /tmp/plan-output.txt 2>&1; plan_exit_code=$?
+
+if [ "$plan_exit_code" -eq 0 ]; then
     echo -e "${RED}✗ terraform plan should have failed with missing region, but it succeeded${NC}"
+    cat /tmp/plan-output.txt
     exit 1
 else
     if grep -qi "region" /tmp/plan-output.txt; then
