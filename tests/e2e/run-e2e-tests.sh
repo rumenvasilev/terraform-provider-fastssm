@@ -159,7 +159,28 @@ echo -e "${GREEN}✓ Terraform CLI config created${NC}"
 # Step 2: Wait for LocalStack
 wait_for_localstack
 
-# Step 3: Test 1 - Basic CRUD Operations
+# Step 3: Test 0 - Missing Provider Configuration (negative test)
+print_header "Test 0: Missing Provider Configuration (expect failure)"
+setup_test_env "Test 0" "no-provider-config.tf"
+
+echo "Running terraform plan with empty provider block (should fail)..."
+if terraform plan > /tmp/plan-output.txt 2>&1; then
+    echo -e "${RED}✗ terraform plan should have failed with missing region, but it succeeded${NC}"
+    cat /tmp/plan-output.txt
+    exit 1
+fi
+
+if grep -qi "region" /tmp/plan-output.txt; then
+    echo -e "${GREEN}✓ terraform plan failed with region error as expected${NC}"
+else
+    echo -e "${RED}✗ terraform plan failed but not with expected region error${NC}"
+    cat /tmp/plan-output.txt
+    exit 1
+fi
+
+echo -e "${GREEN}✓ Test 0 passed${NC}"
+
+# Step 5: Test 1 - Basic CRUD Operations
 print_header "Test 1: Basic CRUD Operations"
 setup_test_env "Test 1" "main.tf"
 
@@ -182,7 +203,7 @@ fi
 echo -e "${GREEN}✓ Test 1 passed${NC}"
 cleanup_test "Test 1"
 
-# Step 4: Test 2 - Import Functionality
+# Step 6: Test 2 - Import Functionality
 print_header "Test 2: Import Existing Parameter"
 
 # Create a parameter directly via AWS CLI
@@ -222,7 +243,7 @@ terraform plan -detailed-exitcode || {
 echo -e "${GREEN}✓ Test 2 passed${NC}"
 cleanup_test "Test 2"
 
-# Step 5: Test 3 - Update Operations
+# Step 7: Test 3 - Update Operations
 print_header "Test 3: Update Operations"
 setup_test_env "Test 3" "main.tf" "update.tf"
 
@@ -267,6 +288,7 @@ echo -e "${GREEN}✓ All E2E tests passed!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 echo "Tests completed:"
+echo "  ✓ Test 0: Missing Provider Configuration (negative test)"
 echo "  ✓ Test 1: Basic CRUD Operations"
 echo "  ✓ Test 2: Import Functionality"
 echo "  ✓ Test 3: Update Operations"

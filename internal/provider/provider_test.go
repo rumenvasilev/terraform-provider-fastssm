@@ -3,10 +3,12 @@ package provider
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
 // testAccProtoV6ProviderFactories are used to instantiate a provider during
@@ -33,22 +35,47 @@ func testAccPreCheck(t *testing.T) {
 // If LOCALSTACK_ENDPOINT is set, it configures the provider to use LocalStack.
 func testAccProviderConfig() string {
 	localstackEndpoint := os.Getenv("LOCALSTACK_ENDPOINT")
+	region := os.Getenv("AWS_REGION")
+	if region == "" {
+		region = "us-east-1"
+	}
 
 	if localstackEndpoint != "" {
 		return fmt.Sprintf(`
 provider "fastssm" {
+  region = %[2]q
   endpoints {
     ssm = %[1]q
     sts = %[1]q
   }
   skip_credentials_validation = true
 }
-`, localstackEndpoint)
+`, localstackEndpoint, region)
 	}
 
-	// For real AWS, no provider configuration needed (uses default AWS credentials)
-	return `
+	return fmt.Sprintf(`
 provider "fastssm" {
+  region = %[1]q
 }
-`
+`, region)
+}
+
+func TestProviderRequiresRegion(t *testing.T) {
+	resource.UnitTest(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: `
+provider "fastssm" {}
+
+resource "fastssm_parameter" "test" {
+  name  = "/test/missing-region"
+  value = "test"
+  type  = "String"
+}
+`,
+				ExpectError: regexp.MustCompile(`(?i)region`),
+			},
+		},
+	})
 }

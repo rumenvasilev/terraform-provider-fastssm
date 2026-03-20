@@ -189,9 +189,10 @@ func (p *FastSSMProvider) Schema(ctx context.Context, req provider.SchemaRequest
 					"created with `aws configure` will be used.",
 			},
 			"region": schema.StringAttribute{
-				Optional: true,
+				Required: true,
 				Description: "The region where AWS operations will take place. Examples\n" +
-					"are us-east-1, us-west-2, etc.", // lintignore:AWSAT003,
+					"are us-east-1, us-west-2, etc. This attribute is required to prevent\n" +
+					"silent fallback to AWS SDK defaults.", // lintignore:AWSAT003,
 			},
 			"retry_mode": schema.StringAttribute{
 				Optional: true,
@@ -479,9 +480,7 @@ func (p *FastSSMProvider) Configure(ctx context.Context, req provider.ConfigureR
 	}
 
 	// Region
-	if !data.Region.IsNull() {
-		options = append(options, config.WithRegion(data.Region.ValueString()))
-	}
+	options = append(options, config.WithRegion(data.Region.ValueString()))
 
 	// Static credentials
 	if !data.AccessKey.IsNull() && !data.SecretKey.IsNull() {
